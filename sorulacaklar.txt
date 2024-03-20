@@ -1,2 +1,0 @@
-admin item oluşturamıyor gibi anlıyorum, doğru mu?
-superadmin için "Suspend and bring back the organization." tam olarak ne isteniyor? suspended organizaztionda tüm aktiviteler durduruluyor mu?
