@@ -5,7 +5,6 @@ import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import CssBaseline from '@mui/material/CssBaseline';
 import TextField from '@mui/material/TextField';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import Link from '@mui/material/Link';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
@@ -17,7 +16,10 @@ import { useNavigate } from 'react-router-dom';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
-import Select, { SelectChangeEvent } from '@mui/material/Select';
+import Select from '@mui/material/Select';
+import { Formik } from "formik";
+import * as yup from "yup";
+
 
 function Copyright(props) {
   return (
@@ -31,25 +33,23 @@ function Copyright(props) {
     </Typography>
   );
 }
-
-
 const defaultTheme = createTheme();
 
 export default function SignUp() {
+  //const { validateForm } = useFormikContext();
+  const [errorMessage, setErrorMessage] = useState("");
   const [role, setRole] = useState(false);
-  const handleChange = (event) => {
+  const handleRoleChange = (event) => {
     setRole(event.target.value);
   };
-    const navigate = useNavigate();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     first_name:'',
     last_name:'',
-    email:'', //email
+    email:'', 
     password:'',
     employee_role:''
 });
-
-
 const handleInputChange = (e) => {
   setFormData({
     ...formData,
@@ -58,19 +58,25 @@ const handleInputChange = (e) => {
 };
 
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    try {
-      formData.employee_role=role;
+const handleSubmit = async (event) => {
+  try{
+  event.preventDefault();
+  formData.employee_role=role;
+    if(isEmailValid(formData.email)){
       const response = await axios.post('http://localhost:8000/auth/', formData);
       if (response.status === 201) {
         navigate("/")
-      }
-    } catch (error) {
+        }
     }
-  };
+  }
+  catch(error){
+    if (error.response?.status === 409){
+      setErrorMessage("This email address has been registered before. Please use a different email.")  }
+    else{
+      setErrorMessage("An error occurred while processing the request. Please try again.");}
+  }
 
-
+};
   return (
     <ThemeProvider theme={defaultTheme}>
       <Container component="main" maxWidth="xs">
@@ -89,100 +95,157 @@ const handleInputChange = (e) => {
           <Typography component="h1" variant="h5">
             Sign up
           </Typography>
-          <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  onChange={handleInputChange}
-                  autoComplete="given-name"
-                  name="first_name"
-                  required
-                  fullWidth
-                  id="first_name"
-                  label="First Name"
-                  type="text"
-                  value={formData.first_name}
-                  autoFocus
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  onChange={handleInputChange}
-                  required
-                  fullWidth
-                  id="last_name"
-                  label="Last Name"
-                  name="last_name"
-                  type="text"
-                  value={formData.last_name}
-                  autoComplete="family-name"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  onChange={handleInputChange}
-                  required
-                  fullWidth
-                  type="text"
-                  id="email"
-                  label="Email Address"
-                  name="email"
-                  value={formData.username}
-                  autoComplete="email"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  onChange={handleInputChange}
-                  required
-                  fullWidth
-                  name="password"
-                  label="Password"
-                  type="text"
-                  id="password"
-                  value={formData.password}
-                  autoComplete="new-password"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel id="demo-simple-select-label">Role</InputLabel>
-                  <Select
-                    labelId="demo-simple-select-label"
-                    id="demo-simple-select"
-                    value={role}
-                    label="Role"
-                    onChange={handleChange}
-                  >
-                    <MenuItem value={"Basic"}>Basic</MenuItem>
-                    <MenuItem value={"Admin"}>Admin</MenuItem>
-                    <MenuItem value={"Superadmin"}>Superadmin</MenuItem>
-                  </Select>
-                </FormControl>
+          <Formik
+            onSubmit={handleSubmit}
+            initialValues={initialValues}
+            validationSchema={checkoutSchema}
+          >
+            {({
+              errors,
+              touched,
+              handleBlur,
+              handleChange,
+            }) => (
+              <form onSubmit={handleSubmit}>
+            <Box  sx={{ mt: 3 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    autoComplete="given-name"
+                    name="first_name"
+                    required
+                    fullWidth
+                    id="first_name"
+                    label="First Name"
+                    type="text"
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    error={!!touched.first_name && !!errors.first_name}
+                    helperText={touched.first_name && errors.first_name}
+                    value={formData.first_name}
+                    autoFocus
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    error={!!touched.last_name && !!errors.last_name}
+                    helperText={touched.last_name && errors.last_name}
+                    required
+                    fullWidth
+                    id="last_name"
+                    label="Last Name"
+                    name="last_name"
+                    type="text"
+                    value={formData.last_name}
+                    autoComplete="family-name"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    onChange={(event) => 
+                      {handleInputChange(event);
+                        handleChange(event);}}
+                    onBlur={handleBlur}
+                    error={!!touched.email && !!errors.email}
+                    helperText={touched.email && errors.email}
+                    required
+                    fullWidth
+                    type="text"
+                    id="email"
+                    label="Email Address"
+                    name="email"
+                    value={formData.email}
+                    autoComplete="email"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    error={!!touched.password && !!errors.password}
+                    helperText={touched.password && errors.password}
+                    required
+                    fullWidth
+                    name="password"
+                    label="Password"
+                    type="text"
+                    id="password"
+                    value={formData.password}
+                    autoComplete="new-password"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel id="demo-simple-select-label">Role</InputLabel>
+                    <Select
+                      labelId="demo-simple-select-label"
+                      id="demo-simple-select"
+                      value={role}
+                      label="Role"
+                      onChange={handleRoleChange}
+                    >
+                      <MenuItem value={"Basic"}>Basic</MenuItem>
+                      <MenuItem value={"Admin"}>Admin</MenuItem>
+                      <MenuItem value={"Superadmin"}>Superadmin</MenuItem>
+                    </Select>
+                  </FormControl>
 
 
 
+                </Grid>
               </Grid>
-            </Grid>
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-            >
-              Sign Up
-            </Button>
-            <Grid container justifyContent="flex-end">
-              <Grid item>
-                <Link href="/" variant="body2">
-                  Already have an account? Sign in
-                </Link>
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                sx={{ mt: 3, mb: 2 }}
+              >
+                Sign Up
+              </Button>
+              
+              {errorMessage && (
+              <Box sx={{ mt: 2, textAlign: "center" }}>
+                <Typography color="error">{errorMessage}</Typography>
+              </Box>
+              )}
+
+              <Grid container justifyContent="flex-end">
+                <Grid item>
+                  <Link href="/" variant="body2">
+                    Already have an account? Sign in
+                  </Link>
+                </Grid>
               </Grid>
-            </Grid>
-          </Box>
+            </Box>
+            </form>
+            )}
+            </Formik>
         </Box>
         <Copyright sx={{ mt: 5 }} />
       </Container>
     </ThemeProvider>
   );
+}
+
+const checkoutSchema = yup.object().shape({
+  first_name: yup.string().required("required"),
+  last_name: yup.string().required("required"),
+  email: yup.string().email("invalid email").required("required"),
+  password: yup.string(),
+  employee_role: yup.string(),
+});
+const initialValues = {
+  first_name: "",
+  last_name: "",
+  email: "",
+  password: "",
+  employee_role: ""
+};
+
+function isEmailValid(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  console.log(emailRegex.test(email));
+  return emailRegex.test(email);
 }

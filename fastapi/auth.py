@@ -6,11 +6,11 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette import status
 from database import SessionLocal
-from models import User
+from models import *
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
-import models
+
 router=APIRouter(
     prefix='/auth',
     tags=['auth']
@@ -58,36 +58,50 @@ def get_db():
 
 db_dependency = Annotated[Session,Depends(get_db)]
 
+
+'''Creates user with provided data. If the request is for a superadmin, checks
+if a superadmin exists. Also, unique email check is done.'''
 @router.post("/")
 async def create_user(db:db_dependency,create_user_request:CreateUserRequest):
     if(create_user_request.employee_role=="Superadmin"):
         if (check_SA(db)):
             return JSONResponse(content={}, status_code=status.HTTP_403_FORBIDDEN)
     create_user_model= User(
-    first_name = create_user_request.first_name,
-    last_name = create_user_request.last_name,
-    email = create_user_request.email,
-    hashed_password = bcrypt_context.hash(create_user_request.password),
-    employee_role = create_user_request.employee_role,
-    suspended = False,
-    suspender_id=0
+        first_name = create_user_request.first_name,
+        last_name = create_user_request.last_name,
+        email = create_user_request.email,
+        hashed_password = bcrypt_context.hash(create_user_request.password),
+        employee_role = create_user_request.employee_role,
+        suspended = False,
+        suspender_id=0
     )
+    db_user = db.query(User).filter(User.email == create_user_request.email).first()
+    if db_user:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Same user exists!")
     db.add(create_user_model)
     db.commit() 
     db.refresh(create_user_model)
-    print("here")
-
+    log = Logs(log_message="User with ID: " + str(create_user_model.id) + " created")
+    db.add(log)
+    db.commit() 
+    db.refresh(log)
     return JSONResponse(content={}, status_code=status.HTTP_201_CREATED)
     
 
+'''Handles user login request, returns access token if successful'''
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm,Depends()], db:db_dependency):
     user=authenticate_user(form_data.username,form_data.password,db)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
     token = create_access_token(user,timedelta(minutes=20))
+    log = Logs(log_message="User with ID: " + str(user.id) + " logged in")
+    db.add(log)
+    db.commit() 
+    db.refresh(log)
     return {'access_token': token, 'token_type':'bearer'}
 
+'''Checks if the user can be authanticated'''
 def authenticate_user(username:str, password:str, db):
     user = db.query(User).filter(User.email==username).first()
     if not user:
@@ -98,7 +112,7 @@ def authenticate_user(username:str, password:str, db):
         return False
     return user
 
-
+'''Creates access token for the user.'''
 def create_access_token(user:UserBase ,expires_delta:timedelta):
     encode = {'first_name': user.first_name,
               'last_name': user.last_name,
@@ -109,10 +123,7 @@ def create_access_token(user:UserBase ,expires_delta:timedelta):
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_user_from_db(db: db_dependency, user_id:int):
-    users = db.query(models.User).filter(models.User.id == user_id).first()
-    return users
-
+'''Checks If there is any Superadmin.'''
 def check_SA(db:db_dependency):
     user = db.query(User).filter(User.employee_role=="Superadmin").first()
     if not user:

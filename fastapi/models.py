@@ -22,5 +22,10 @@ class Item(Base):
     item_description = Column(String, unique=False, index=True)
     item_data = Column(String, unique=False, index=True)
     creator_id = Column(String, unique=False, index=True)
-    
+
+class Logs(Base):
+    __tablename__ = "logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    log_message = Column(String, unique=False, index=True)
 
