@@ -59,10 +59,11 @@ def get_db():
 db_dependency = Annotated[Session,Depends(get_db)]
 
 
-'''Creates user with provided data. If the request is for a superadmin, checks
-if a superadmin exists. Also, unique email check is done.'''
 @router.post("/")
 async def create_user(db:db_dependency,create_user_request:CreateUserRequest):
+'''Creates user with provided data. If the request is for a superadmin, checks
+if a superadmin exists. Also, unique email check is done here.'''
+
     if(create_user_request.employee_role=="Superadmin"):
         if (check_SA(db)):
             return JSONResponse(content={}, status_code=status.HTTP_403_FORBIDDEN)
@@ -88,9 +89,10 @@ async def create_user(db:db_dependency,create_user_request:CreateUserRequest):
     return JSONResponse(content={}, status_code=status.HTTP_201_CREATED)
     
 
-'''Handles user login request, returns access token if successful'''
+
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm,Depends()], db:db_dependency):
+'''Handles user login request, returns access token if successful'''
     user=authenticate_user(form_data.username,form_data.password,db)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
@@ -101,8 +103,8 @@ async def login_for_access_token(form_data:Annotated[OAuth2PasswordRequestForm,D
     db.refresh(log)
     return {'access_token': token, 'token_type':'bearer'}
 
-'''Checks if the user can be authanticated'''
 def authenticate_user(username:str, password:str, db):
+'''Checks if the user can be authanticated'''    
     user = db.query(User).filter(User.email==username).first()
     if not user:
         return False
@@ -112,8 +114,9 @@ def authenticate_user(username:str, password:str, db):
         return False
     return user
 
-'''Creates access token for the user.'''
+
 def create_access_token(user:UserBase ,expires_delta:timedelta):
+'''Creates access token for the user.'''
     encode = {'first_name': user.first_name,
               'last_name': user.last_name,
               'employee_role': user.employee_role,
@@ -123,8 +126,9 @@ def create_access_token(user:UserBase ,expires_delta:timedelta):
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-'''Checks If there is any Superadmin.'''
+
 def check_SA(db:db_dependency):
+'''Checks If there is any Superadmin.'''
     user = db.query(User).filter(User.employee_role=="Superadmin").first()
     if not user:
         return False
