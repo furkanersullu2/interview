@@ -78,21 +78,24 @@ db_dependency = Annotated[Session,Depends(get_db)]
 
 Base.metadata.create_all(bind=engine)
 
-'''Returns all users.'''
+
 @app.get("/users/all/",response_model=list[UserModel])
 async def read_users_all(db: db_dependency): # type: ignore
+'''Returns all users.'''
     users = db.query(User).all()
     return users
 
-'''Returns all basic users.'''
+
 @app.get("/users/",response_model=list[UserModel])
 async def read_users_basic(db: db_dependency):
+'''Returns all basic users.'''
     users = db.query(User).filter(User.employee_role == "Basic").all()
     return users
 
-'''Updates the user data of the user with user_id'''
+
 @app.patch("/users/", response_model=UserModel)
 def update_user(db: db_dependency, user_id: int, updated_user: CreateUserRequest):
+'''Updates the user data of the user with user_id'''
     db_user = db.query(User).filter(User.id == user_id).first()
     if db_user:
         db_user.first_name = updated_user.first_name
@@ -108,9 +111,10 @@ def update_user(db: db_dependency, user_id: int, updated_user: CreateUserRequest
         return JSONResponse(content={'access_token': token, 'token_type':'bearer'}, status_code=status.HTTP_200_OK)
     return JSONResponse(content={}, status_code=status.HTTP_404_NOT_FOUND)
 
-'''Suspends a user'''
+
 @app.patch("/users/suspend/", response_model=UserModel)
 def suspend_user(db: db_dependency, suspended_user_id: int, suspender_id: int):
+'''Suspends a user'''
     db_user = db.query(User).filter(User.id == suspended_user_id).first()
     if db_user:
         db_user.suspended = True
@@ -124,9 +128,9 @@ def suspend_user(db: db_dependency, suspended_user_id: int, suspender_id: int):
         return JSONResponse(content={}, status_code=status.HTTP_200_OK)
     return JSONResponse(content={}, status_code=status.HTTP_404_NOT_FOUND)
 
-'''Enables suspended user if the suspender and the enabler are the same admin'''
 @app.patch("/users/enable/", response_model=UserModel)
 def enable_user(db: db_dependency, suspended_user_id: int, suspender_id: int):
+'''Enables suspended user if the suspender and the enabler are the same admin'''
     db_user = db.query(User).filter(User.id == suspended_user_id).first()
     if db_user:
         if(db_user.suspender_id == suspender_id):
@@ -142,9 +146,10 @@ def enable_user(db: db_dependency, suspended_user_id: int, suspender_id: int):
         return JSONResponse(content={}, status_code=status.HTTP_401_UNAUTHORIZED)
     return JSONResponse(content={}, status_code=status.HTTP_404_NOT_FOUND)
 
-'''Enables any user regardles of the suspender'''
+
 @app.patch("/users/enable/sa/", response_model=UserModel)
 def enable_user_SA(db: db_dependency, suspended_user_id: int):
+'''Enables any user regardles of the suspender'''
     db_user = db.query(User).filter(User.id == suspended_user_id).first()
     if db_user:
         db_user.suspended = False
@@ -159,9 +164,10 @@ def enable_user_SA(db: db_dependency, suspended_user_id: int):
         return JSONResponse(content={}, status_code=status.HTTP_200_OK)
     return JSONResponse(content={}, status_code=status.HTTP_404_NOT_FOUND)
 
-'''Deletes the user with user_id'''
+
 @app.delete("/users/", response_model=UserModel)
 def delete_user(db: db_dependency, user_id: int):
+'''Deletes the user with user_id'''
     db_user = db.query(User).filter(User.id == user_id).first()#maybe delete with username?
     if db_user:
         db.delete(db_user)
@@ -174,9 +180,10 @@ def delete_user(db: db_dependency, user_id: int):
         return db_user
     return JSONResponse(content={}, status_code=status.HTTP_404_NOT_FOUND)
 
-'''Creates item from provided data.'''
+
 @app.post("/items/", response_model=ItemModel)
 async def create_item(item: ItemBase, db: db_dependency):
+'''Creates item from provided data.'''
     db_item = Item(**item.dict())
     db.add(db_item)
     db.commit()
@@ -187,22 +194,25 @@ async def create_item(item: ItemBase, db: db_dependency):
     db.refresh(log)
     return db_item
 
-'''Returns items of one creator with creator_id'''
+
 @app.get("/items/",response_model=list[ItemModel])
 async def read_items(db: db_dependency,creator_id:str):
+'''Returns items of one creator with creator_id'''
     items = db.query(Item).filter(Item.creator_id == creator_id).all()
     return items
 
 
-'''Returns all items'''
+
 @app.get("/items/all",response_model=list[ItemModel])
 async def read_items_all(db: db_dependency):
+'''Returns all items'''
     items = db.query(Item).all()
     return items
 
-'''Updates the item with item_id'''
+
 @app.patch("/items/", response_model=ItemModel)
 def update_item(db: db_dependency, item_id: int, updated_item: ItemBase):
+'''Updates the item with item_id'''
     db_item = db.query(Item).filter(Item.id == item_id).first()
     if db_item:
         db_item.item_name = updated_item.item_name
@@ -220,9 +230,10 @@ def update_item(db: db_dependency, item_id: int, updated_item: ItemBase):
     return JSONResponse(content={}, status_code=status.HTTP_404_NOT_FOUND)
 
 
-'''Deletes item with item_id'''
+
 @app.delete("/items/", response_model=ItemModel)
 def delete_item(db: db_dependency, item_id: str):
+'''Deletes item with item_id'''
     item_id=int(item_id)
     db_item = db.query(Item).filter(Item.id == item_id).first()
     if db_item:
